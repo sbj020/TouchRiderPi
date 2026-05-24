@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"mkdir": true,
+			"printf": true,
+			"/^cd '/Users/simonbjorndal/Documents/Nubben projects/PiRider' && python3 -m py_compile main\\.py pirider/\\*\\.py$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
+	}
+}
