@@ -1,5 +1,5 @@
-from pirider.app import App
+from game_center import GameCenter
 
 
 if __name__ == "__main__":
-    App().run()
+    GameCenter().run()

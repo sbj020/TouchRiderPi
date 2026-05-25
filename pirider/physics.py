@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import List, Tuple
 
-from .config import FRICTION, GRAVITY, RIDER_RADIUS
+from .config import GRAVITY, RIDER_RADIUS, SURFACE_FRICTION
 from .track import Track
 
 Point = Tuple[int, int]
@@ -17,6 +17,7 @@ class Rider:
     def reset(self) -> None:
         self.position = [float(self.spawn[0]), float(self.spawn[1])]
         self.velocity = [0.0, 0.0]
+        self.on_ground = False
 
 
 class PhysicsEngine:
@@ -36,9 +37,11 @@ class PhysicsEngine:
         next_position = [next_x, next_y]
 
         if not track.is_empty():
-            next_position, self.rider.velocity = self._resolve_collisions(
-                next_position, self.rider.velocity, track.segments
+            next_position, self.rider.velocity, self.rider.on_ground = self._resolve_collisions(
+                next_position, self.rider.velocity, track.segments, dt
             )
+        else:
+            self.rider.on_ground = False
 
         self.rider.position = next_position
 
@@ -47,24 +50,57 @@ class PhysicsEngine:
         position: List[float],
         velocity: List[float],
         segments: List[tuple[Point, Point]],
-    ) -> tuple[List[float], List[float]]:
+        dt: float,
+    ) -> tuple[List[float], List[float], bool]:
+        on_ground = False
         for start, end in segments:
             closest = self._closest_point_on_segment(position, start, end)
             dx = position[0] - closest[0]
             dy = position[1] - closest[1]
             distance = math.hypot(dx, dy)
 
-            if distance < RIDER_RADIUS and distance > 0.0:
-                normal = [dx / distance, dy / distance]
-                position[0] = closest[0] + normal[0] * RIDER_RADIUS
-                position[1] = closest[1] + normal[1] * RIDER_RADIUS
+            if distance <= RIDER_RADIUS:
+                normal = [0.0, 0.0]
+                if distance > 0.0:
+                    normal = [dx / distance, dy / distance]
+                else:
+                    segment_dx = end[0] - start[0]
+                    segment_dy = end[1] - start[1]
+                    length = math.hypot(segment_dx, segment_dy)
+                    if length == 0.0:
+                        continue
+                    tangent = [segment_dx / length, segment_dy / length]
+                    normal = [-tangent[1], tangent[0]]
+                    if velocity[0] * normal[0] + velocity[1] * normal[1] < 0:
+                        normal = [-normal[0], -normal[1]]
+                    position[0] = closest[0] + normal[0] * RIDER_RADIUS
+                    position[1] = closest[1] + normal[1] * RIDER_RADIUS
+
+                if distance > 0.0:
+                    position[0] = closest[0] + normal[0] * RIDER_RADIUS
+                    position[1] = closest[1] + normal[1] * RIDER_RADIUS
 
                 tangent = [-normal[1], normal[0]]
-                velocity_along_tangent = velocity[0] * tangent[0] + velocity[1] * tangent[1]
-                velocity = [tangent[0] * velocity_along_tangent * FRICTION,
-                            tangent[1] * velocity_along_tangent * FRICTION]
+                velocity_normal = velocity[0] * normal[0] + velocity[1] * normal[1]
+                velocity_tangent = velocity[0] * tangent[0] + velocity[1] * tangent[1]
 
-        return position, velocity
+                if velocity_normal < 0.0:
+                    velocity_normal = 0.0
+
+                damping = pow(SURFACE_FRICTION, dt * 60.0)
+                velocity_tangent *= damping
+
+                velocity = [
+                    tangent[0] * velocity_tangent + normal[0] * velocity_normal,
+                    tangent[1] * velocity_tangent + normal[1] * velocity_normal,
+                ]
+
+                if abs(velocity_tangent) < 5.0 and velocity_normal == 0.0:
+                    velocity = [0.0, 0.0]
+
+                on_ground = True
+
+        return position, velocity, on_ground
 
     @staticmethod
     def _closest_point_on_segment(

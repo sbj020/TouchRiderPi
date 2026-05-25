@@ -1,0 +1,63 @@
+Raspberry Pi Playability Plan
+1. Current repo status
+requirements.txt already lists only pygame>=2.0
+game code is Python/pygame only
+no native or platform-specific code is required
+current game architecture should run on Pi as-is
+2. Docs-backed findings
+Pygame wiki explicitly says Raspberry Pi usually ships with an ancient pygame but recommends upgrading with:
+python3 -m pip install -U pygame --user
+Raspberry Pi OS includes Python 3 by default, so the main dependency is just pygame
+modern Pi models (Pi 4, Pi 5, Zero 2 W) support SDL2/pygame and can run 2D games
+performance is the main concern, not compatibility
+3. Recommended Pi target hardware
+Best: Raspberry Pi 5 or Pi 4 with 4GB+
+Good: Raspberry Pi Zero 2 W or Pi 3 if resolution is modest and FPS is lowered
+Avoid: original Pi 1/Zero without performance tuning
+4. Software/install steps
+Use a clean Python 3 environment on Raspberry Pi OS:
+
+sudo apt update && sudo apt full-upgrade
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
+or on Pi: python3 -m pip install -U pygame --user
+Run with:
+python3 main.py
+or PIRIDER_WINDOWED=1 python3 main.py for windowed mode
+5. What likely needs to change
+Nothing mandatory for basic Pi playability
+But I recommend these optional improvements:
+add explicit Pi instructions to README.md
+optionally lower FPS from 60 to 45 or 30 for slower Pi models
+optionally add a PIRIDER_WINDOWED default or dynamic display detection
+optionally add a --pi-mode or config.py setting for lower-res rendering on smaller screens
+6. Input / touchscreen
+Your current input code is mouse-first
+That is usually fine for Pi touchscreens because many expose touch as mouse events
+If you use a touchscreen that reports real touch events, future work would be:
+handle pygame.FINGERDOWN, FINGERMOTION, FINGERUP
+or map touch to the same mouse behavior
+7. Performance considerations
+Current draw:
+game uses vector drawing and realtime physics
+number of points per stroke can affect render cost
+If the Pi feels slow:
+reduce FPS
+cap max points per stroke
+simplify line drawing
+keep WINDOW_FLAGS=0 or use a lower display resolution
+On Pi 5/4, this code should be comfortable if pygame uses hardware accelerated SDL2
+8. Practical next steps
+I suggest the following minimal plan:
+
+add Pi-specific install/run notes to README.md
+test on a Pi with:
+python3 main.py
+PIRIDER_WINDOWED=1 python3 main.py
+if needed, lower FPS or add a PI_MODE = True config branch
+if touchscreen is the input target, verify whether it generates mouse events
+optionally add a small run_pi.sh wrapper
+9. Conclusion
+No code rewrite is required to make the game playable on Raspberry Pi
+The main work is packaging and documentation, plus a possible performance fallback for slower models
+The biggest real risk is pygame version on Pi OS, so upgrade it with pip if needed
