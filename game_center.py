@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import pygame
 
-from pirider.apps import AppEntry, get_available_apps
+from pirider.apps import AppEntry, get_available_apps, quit_app
 
 
 class GameCenter:
@@ -13,7 +13,7 @@ class GameCenter:
         self.font = None
         self.running = True
         self.selected_index = 0
-        self.apps = get_available_apps() + [AppEntry("Quit", self._quit)]
+        self.apps = get_available_apps() + [AppEntry("Quit", quit_app, reinit_after=False)]
         self._init_display()
 
     def _init_display(self) -> None:
@@ -48,9 +48,18 @@ class GameCenter:
                 elif event.key == pygame.K_DOWN:
                     self.selected_index = (self.selected_index + 1) % len(self.apps)
                 elif event.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE):
-                    self.apps[self.selected_index].launch()
+                    self._launch_selected_app()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 self._click_menu(event.pos)
+
+    def _launch_selected_app(self) -> None:
+        app = self.apps[self.selected_index]
+        if app.name == "Quit":
+            self.running = False
+        else:
+            app.launch()
+            if app.reinit_after:
+                self._init_display()
 
     def _click_menu(self, pos: tuple[int, int]) -> None:
         width, height = self.screen.get_size()
@@ -61,7 +70,12 @@ class GameCenter:
             text_rect = text_surface.get_rect(center=(width // 2, start_y + index * spacing))
             if text_rect.collidepoint(pos):
                 self.selected_index = index
-                app.launch()
+                if app.name == "Quit":
+                    self.running = False
+                else:
+                    app.launch()
+                    if app.reinit_after:
+                        self._init_display()
                 break
 
     def _render(self) -> None:
